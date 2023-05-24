@@ -32,6 +32,14 @@ enum Cli {
         version: String,
     },
 
+    /// Update bob to the latest version
+    Update {
+        /// <stable|nightly|--all>
+        /// Update to the latest stable or nightly version
+        /// --all
+        version: String
+    },
+
     /// If Config::version_sync_file_location is set, the version in that file
     /// will be parsed and installed
     Sync,
@@ -84,6 +92,27 @@ pub async fn start(config: Config) -> Result<()> {
                 }
                 InstallResult::VersionAlreadyInstalled => {
                     info!("{} is already installed", version.tag_name);
+                }
+                InstallResult::NightlyIsUpdated => {
+                    info!("Nightly up to date!");
+                }
+            }
+        }
+        Cli::Update { version } => {
+            println!("{:?}", version);
+
+            let client = Client::new();
+            let mut version = super::version::parse_version_type(&client, &version).await?;
+
+            match handlers::update_handler::start(&mut version, &client, &config).await? {
+                InstallResult::InstallationSuccess(location) => {
+                    info!(
+                        "{} has been successfully updated in {location}",
+                        version.tag_name
+                    );
+                }
+                InstallResult::VersionAlreadyInstalled => {
+                    info!("{} is already up to date", version.tag_name);
                 }
                 InstallResult::NightlyIsUpdated => {
                     info!("Nightly up to date!");
